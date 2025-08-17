@@ -14,9 +14,7 @@ Built with **Next.js (App Router)**, **Ant Design**, **Monaco Editor**, and **Do
 
 ### 1. Install dependencies
 ```bash
-npm install
-# or
-yarn install
+pnpm install
 ```
 
 ### 2. Start Postgres (Docker)
@@ -40,7 +38,7 @@ docker exec -it quill-project-db-1 psql -U app -d app
 
 ### 3. Run Next.js
 ```bash
-npm run dev
+pnpm dev
 ```
 Open [http://localhost:3000](http://localhost:3000).
 
