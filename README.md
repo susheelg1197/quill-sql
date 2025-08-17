@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quill SQL Assistant
 
-## Getting Started
+A full-stack **Next.js 14 + Postgres** playground that lets you:
 
-First, run the development server:
+- Run safe, read-only SQL queries against a Postgres database
+- Chat with an AI assistant that generates SQL from natural language
+- View query results in a clean, interactive table
 
+Built with **Next.js (App Router)**, **Ant Design**, **Monaco Editor**, and **Dockerized Postgres**.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Install dependencies
 ```bash
-npm run dev
+npm install
 # or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+yarn install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Start Postgres (Docker)
+This project includes a `docker-compose.yml` for Postgres.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker-compose up -d
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+By default:
+- **DB name**: `app`
+- **User**: `app`
+- **Password**: `app`
+- **Port**: `5432`
 
-## Learn More
+Connect to the container:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker exec -it quill-project-db-1 psql -U app -d app
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Run Next.js
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 📂 Folder Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+app/
+ ├─ api/
+ │   ├─ chat/          # AI → SQL generation endpoint
+ │   ├─ schema/        # Returns DB schema as JSON
+ │   ├─ sql/
+ │   │   ├─ run/       # Executes validated SQL against Postgres
+ │   │   └─ validate/  # Validates SQL (EXPLAIN only)
+ │
+ ├─ globals.css        # Global styles
+ ├─ layout.tsx         # Root layout
+ └─ page.tsx           # Main UI (SQL editor + chat)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🖥️ System Overview
+
+### Server (Next.js API Routes)
+- `/api/chat` → calls OpenAI, generates SQL from natural language
+- `/api/schema` → fetches DB schema via Postgres `information_schema`
+- `/api/sql/run` → validates + executes SQL queries safely
+- `/api/sql/validate` → runs `EXPLAIN` to catch invalid queries
+
+### Client (Next.js App Router)
+- `page.tsx` → main UI with Monaco SQL editor, chat, results table
+- Chat messages show **user queries** and **AI responses**
+- AI-generated SQL can be **previewed, copied, or executed**
+
+### Database (Postgres)
+- Running in Docker
+- Schema introspected via `information_schema`
+- Queries validated before execution (no schema = no execution)
+
+---
+
+## 📦 Deployment
+
+Deploy easily on [Vercel](https://vercel.com).  
+Make sure Postgres is accessible and `DATABASE_URL` is set:
+
+---
+
+## 🔒 Safety & Validation
+
+- AI-generated queries are validated with `EXPLAIN` before execution  
+- Invalid or hallucinated fields/tables are rejected  
+- End users never see broken SQL
+
+---
