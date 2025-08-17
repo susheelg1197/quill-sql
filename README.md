@@ -84,10 +84,9 @@ app/
 
 ---
 
-## 📦 Deployment
+## 📦 Demo
 
-Deploy easily on [Vercel](https://vercel.com).  
-Make sure Postgres is accessible and `DATABASE_URL` is set:
+![alt text](public/demo.png)
 
 ---
 
