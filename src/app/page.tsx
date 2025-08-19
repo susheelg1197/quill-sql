@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Resizable } from 'react-resizable';
 import Editor from '@monaco-editor/react';
 import {
   App as AntApp,
@@ -32,6 +33,31 @@ function extractSqlBlocks(markdown: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(markdown))) out.push(m[1].trim());
   return out;
+}
+
+type ResizeProps = React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {
+  onResize?: (e: unknown, data: { size: { width: number; height: number } }) => void;
+  width?: number;
+};
+
+const ResizableTitle: React.FC<ResizeProps> = (props) => {
+  const { onResize, width, children, ...rest } = props;
+  if (!width) return <th {...rest}>{children}</th>;
+  return (
+    <Resizable
+      width={width}
+      height={0}
+      onResize={onResize!}
+      handle={<span className="react-resizable-handle" onClick={(e) => e.stopPropagation()} />}
+      draggableOpts={{ enableUserSelectHack: false }}
+    >
+      <th {...rest} style={{ whiteSpace: 'nowrap' }}>{children}</th>
+    </Resizable>
+  );
+};
+
+function prettifyColumnName(col: string) {
+  return col.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function UserBubble({ text }: { text: string }) {
@@ -116,6 +142,21 @@ export default function Home() {
 
   const [schema, setSchema] = useState<SchemaResp | null>(null);
   const fetchingRef = useRef(false);
+  const [resizableCols, setResizableCols] = useState<
+    { title: React.ReactNode; dataIndex: string; key: string; width: number }[]
+  >([]);
+  useEffect(() => {
+    if (!fields.length) { setResizableCols([]); return; }
+    const sample = rows[0] || {};
+    const next = fields.map((f) => {
+      const header = prettifyColumnName(f);
+      const sampleText = String(sample[f] ?? header);
+      const ch = Math.min(Math.max(sampleText.length, header.length), 40);
+      const width = Math.min(Math.max(ch * 12, 120), 420); // px
+      return { title: header, dataIndex: f, key: f, width };
+    });
+    setResizableCols(next);
+  }, [fields]);
 
   useEffect(() => {
     (async () => {
@@ -136,6 +177,16 @@ export default function Home() {
       }
     })();
   }, [schema]);
+
+  const handleResize =
+    (index: number) =>
+      (_e: unknown, { size }: { size: { width: number; height: number } }) => {
+        setResizableCols((cols) => {
+          const next = [...cols];
+          next[index] = { ...next[index], width: Math.max(80, size.width) };
+          return next;
+        });
+      };
 
   async function ensureSchema(): Promise<SchemaResp | null> {
     if (schema) return schema;
@@ -174,50 +225,62 @@ export default function Home() {
   }
 
   async function sendChat() {
-  setLoadingChat(true);
-  try {
-    const s = await ensureSchema();
-    if (!s) {
-      setChat(c => [...c, { role: "user", content: prompt }, { role: "assistant", content: "⚠️ Could not load schema." }]);
-      setPrompt(""); return;
-    }
+    setLoadingChat(true);
+    try {
+      const s = await ensureSchema();
+      if (!s) {
+        setChat(c => [...c, { role: "user", content: prompt }, { role: "assistant", content: "⚠️ Could not load schema." }]);
+        setPrompt(""); return;
+      }
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: prompt, schema: s }),
-    });
-
-    const j = await res.json();
-    const aiText: string = j.content ?? "";
-
-    // Validate first SQL block (if any)
-    const blocks = extractSqlBlocks(aiText);
-    if (blocks.length > 0) {
-      const v = await fetch("/api/sql/validate", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sql: blocks[0] }),
-      }).then(r => r.json());
+        body: JSON.stringify({ message: prompt, schema: s }),
+      });
 
-      if (!v.ok) {
-        const msg = `⚠️ The generated SQL is invalid: ${v.error}`;
-        setChat(c => [...c, { role: "user", content: prompt }, { role: "assistant", content: msg }]);
-        setPrompt("");
-        return;
+      const j = await res.json();
+      const aiText: string = j.content ?? "";
+
+      // Validate first SQL block (if any)
+      const blocks = extractSqlBlocks(aiText);
+      if (blocks.length > 0) {
+        const v = await fetch("/api/sql/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sql: blocks[0] }),
+        }).then(r => r.json());
+
+        if (!v.ok) {
+          const msg = `⚠️ The generated SQL is invalid: ${v.error}`;
+          setChat(c => [...c, { role: "user", content: prompt }, { role: "assistant", content: msg }]);
+          setPrompt("");
+          return;
+        }
       }
-    }
 
-    setChat(c => [...c, { role: "user", content: prompt }, { role: "assistant", content: aiText }]);
-    setPrompt("");
-  } finally {
-    setLoadingChat(false);
+      setChat(c => [...c, { role: "user", content: prompt }, { role: "assistant", content: aiText }]);
+      setPrompt("");
+    } finally {
+      setLoadingChat(false);
+    }
   }
-}
 
   const tableColumns = useMemo(
-    () => fields.map((f) => ({ title: f, dataIndex: f, key: f })),
-    [fields]
+    () =>
+      resizableCols.map((col, index) => ({
+        ...col,
+        ellipsis: true,
+        onHeaderCell: () => ({
+          width: col.width,
+          onResize: handleResize(index),
+          title: String(col.title), // native tooltip on hover
+          style: { whiteSpace: 'nowrap' },
+        }),
+        onCell: () => ({ style: { whiteSpace: 'nowrap' } }),
+        render: (v: unknown) => (v == null ? <Text type="secondary">—</Text> : String(v)),
+      })),
+    [resizableCols]
   );
 
   return (
@@ -260,13 +323,18 @@ export default function Home() {
               {fields.length === 0 ? (
                 <Text type="secondary">No results yet. Click <b>Run query</b> above.</Text>
               ) : (
-                <Table
-                  size="small"
-                  columns={tableColumns}
-                  dataSource={rows.map((r, i) => ({ key: i, ...r }))}
-                  pagination={{ pageSize: 12 }}
-                  scroll={{ x: true, y: 360 }}
-                />
+                <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
+                  <Table
+                    components={{ header: { cell: ResizableTitle } }}
+                    size="small"
+                    bordered
+                    tableLayout="fixed"
+                    columns={tableColumns}
+                    dataSource={rows.map((r, i) => ({ key: i, ...r }))}
+                    pagination={{ pageSize: 12, showSizeChanger: false }}
+                    scroll={{ x: 'max-content', y: 360 }}
+                  />
+                </div>
               )}
             </Card>
           </Col>

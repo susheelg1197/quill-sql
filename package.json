@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "@monaco-editor/react": "^4.7.0",
+    "@types/react-resizable": "^3.0.8",
     "antd": "^5.27.0",
     "classnames": "^2.5.1",
     "drizzle-kit": "^0.31.4",
@@ -19,8 +21,9 @@
     "next": "15.4.6",
     "openai": "^5.12.2",
     "pg": "^8.16.3",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-resizable": "^3.0.5",
     "zod": "^4.0.17"
   },
   "devDependencies": {

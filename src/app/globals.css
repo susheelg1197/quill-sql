@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import 'react-resizable/css/styles.css';
 
 :root {
   --background: #ffffff;
@@ -23,4 +24,25 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Make <th> act as a positioning container for the handle */
+.ant-table th {
+  position: relative;
+}
+
+/* Put the resize handle on the full right edge; make it easy to grab */
+.ant-table th .react-resizable-handle {
+  position: absolute;
+  top: 0;
+  right: -6px;       /* slightly outside so it’s not blocked by header text */
+  width: 12px;       /* thick hit area */
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;        /* above header content */
+}
+
+/* Optional: subtle visual cue on hover */
+.ant-table th .react-resizable-handle:hover {
+  background: rgba(0,0,0,0.05);
 }
